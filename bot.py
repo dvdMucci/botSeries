@@ -18,6 +18,7 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 def get_latest_episodes():
     """Obtiene la lista de episodios más recientes de la página web."""
+    print("Accediendo a la página para obtener episodios...")
     response = requests.get(URL)
     response.raise_for_status()
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -26,10 +27,12 @@ def get_latest_episodes():
     episodes = []
     for episode_element in soup.find_all('a', class_='title'):  # Ejemplo de búsqueda
         episodes.append(episode_element.text.strip())
+    print(f"Episodios encontrados: {episodes}")
     return episodes
 
 def send_telegram_notification(message):
     """Envía una notificación por Telegram."""
+    print(f"Enviando notificación: {message}")
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": TELEGRAM_CHAT_ID,
@@ -37,20 +40,25 @@ def send_telegram_notification(message):
     }
     response = requests.post(url, data=payload)
     if response.status_code == 200:
-        print(f"Notificación enviada: {message}")
+        print(f"Notificación enviada con éxito.")
     else:
         print(f"Error al enviar notificación: {response.text}")
 
 def load_last_episode():
     """Carga el último episodio registrado."""
+    print("Cargando el último episodio registrado...")
     try:
         with open(LATEST_EPISODE_FILE, "r") as file:
-            return file.read().strip()
+            last_episode = file.read().strip()
+            print(f"Último episodio cargado: {last_episode}")
+            return last_episode
     except FileNotFoundError:
+        print("Archivo de último episodio no encontrado.")
         return None
 
 def save_last_episode(episode):
     """Guarda el último episodio registrado."""
+    print(f"Guardando el último episodio: {episode}")
     with open(LATEST_EPISODE_FILE, "w") as file:
         file.write(episode)
 
@@ -69,6 +77,7 @@ def notify_existing_episodes():
 
 def main():
     """Función principal del script."""
+    print("Iniciando el bot...")
     notify_existing_episodes()  # Notificar episodios existentes al iniciar
 
     last_episode = load_last_episode()
