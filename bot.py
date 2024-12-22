@@ -16,21 +16,20 @@ LATEST_EPISODE_FILE = "latest_episode.txt"
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-def get_latest_episode():
-    """Obtiene el episodio más reciente de la página web."""
+def get_latest_episodes():
+    """Obtiene la lista de episodios más recientes de la página web."""
     response = requests.get(URL)
     response.raise_for_status()
     soup = BeautifulSoup(response.text, 'html.parser')
 
     # Modifica esto según la estructura de la página
-    episode_element = soup.find('a', class_='title')  # Ejemplo de búsqueda
-    if episode_element:
-        return episode_element.text.strip()
-    return None
+    episodes = []
+    for episode_element in soup.find_all('a', class_='title'):  # Ejemplo de búsqueda
+        episodes.append(episode_element.text.strip())
+    return episodes
 
-def send_telegram_notification(episode):
+def send_telegram_notification(message):
     """Envía una notificación por Telegram."""
-    message = f"Nuevo capítulo disponible: {episode}\nPuedes verlo aquí: {URL}"
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": TELEGRAM_CHAT_ID,
@@ -38,7 +37,7 @@ def send_telegram_notification(episode):
     }
     response = requests.post(url, data=payload)
     if response.status_code == 200:
-        print(f"Notificación enviada: {episode}")
+        print(f"Notificación enviada: {message}")
     else:
         print(f"Error al enviar notificación: {response.text}")
 
@@ -55,19 +54,34 @@ def save_last_episode(episode):
     with open(LATEST_EPISODE_FILE, "w") as file:
         file.write(episode)
 
+def notify_existing_episodes():
+    """Notifica los episodios que actualmente figuran en la página al iniciar el script."""
+    print("Enviando episodios existentes...")
+    try:
+        episodes = get_latest_episodes()
+        if episodes:
+            message = "Episodios actuales disponibles:\n" + "\n".join(episodes)
+            send_telegram_notification(message)
+        else:
+            print("No se encontraron episodios en la página.")
+    except Exception as e:
+        print(f"Error al notificar episodios existentes: {e}")
+
 def main():
     """Función principal del script."""
+    notify_existing_episodes()  # Notificar episodios existentes al iniciar
+
     last_episode = load_last_episode()
 
     while True:
         print("Comprobando nuevos episodios...")
         try:
-            latest_episode = get_latest_episode()
-            if latest_episode and latest_episode != last_episode:
-                print(f"Nuevo episodio encontrado: {latest_episode}")
-                send_telegram_notification(latest_episode)
-                save_last_episode(latest_episode)
-                last_episode = latest_episode
+            latest_episodes = get_latest_episodes()
+            if latest_episodes and latest_episodes[0] != last_episode:
+                print(f"Nuevo episodio encontrado: {latest_episodes[0]}")
+                send_telegram_notification(f"Nuevo capítulo disponible: {latest_episodes[0]}\nPuedes verlo aquí: {URL}")
+                save_last_episode(latest_episodes[0])
+                last_episode = latest_episodes[0]
             else:
                 print("No hay nuevos episodios.")
         except Exception as e:
